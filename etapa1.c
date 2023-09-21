@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h> // Para usar a função malloc
 
-// Definição de NOME TOKENS
+// NOME TOKENS
 #define IF 256
 #define THEN 257
 #define ELSE 258
@@ -9,7 +9,7 @@
 #define ID 260
 #define NUM 261
 
-// Definição de ATRIBUTOS
+// ATRIBUTOS
 #define LT 262
 #define LE 263
 #define EQ 264
@@ -45,6 +45,7 @@ char *readFile(const char *fileName) {
         code[n++] = (char)c;
     }
     code[n] = '\0';
+    fclose(file); // Feche o arquivo após a leitura
     return code;
 }
 
@@ -55,12 +56,12 @@ int falhar() {
     case 12: partida = 20; break;
     case 20: partida = 25; break;
     case 25:
-        // retornar msg de erro
+        // retornar mensagem de erro
         printf("Erro encontrado no código\n");
         cont_sim_lido++;
         break;
     default:
-        printf("Erro do compilador");
+        printf("Erro do compilador\n");
     }
     return partida;
 }
@@ -68,7 +69,7 @@ int falhar() {
 struct Token proximo_token() {
     struct Token token;
     char c;
-    
+
     while (code[cont_sim_lido] != '\0') {
         switch (estado) {
         case 0:
@@ -76,12 +77,9 @@ struct Token proximo_token() {
             if ((c == ' ') || (c == '\n')) {
                 estado = 0;
                 cont_sim_lido++;
-            } else if (c == '<')
-                estado = 1;
-            else if (c == '=')
-                estado = 5;
-            else if (c == '>')
-                estado = 6;
+            } else if (c == '<') estado = 1;
+            else if (c == '=') estado = 5;
+            else if (c == '>') estado = 6;
             else {
                 estado = falhar();
             }
@@ -91,12 +89,14 @@ struct Token proximo_token() {
             cont_sim_lido++;
             c = code[cont_sim_lido];
 
-            if (c == '=')
-                estado = 2;
-            else if (c == '>')
-                estado = 3;
-            else
-                estado = 4;
+            if ((c == ' ') || (c == '\n')) {
+                cont_sim_lido++;
+                c = code[cont_sim_lido];
+            }
+
+            if (c == '=') estado = 2;
+            else if (c == '>') estado = 3;
+            else estado = 4;
             break;
 
         case 2:
@@ -118,7 +118,7 @@ struct Token proximo_token() {
             break;
 
         case 4:
-            cont_sim_lido++;
+            //cont_sim_lido++;
             printf("<relop, LT>\n");
             token.nome_token = RELOP;
             token.atributo = LT;
@@ -138,10 +138,14 @@ struct Token proximo_token() {
         case 6:
             cont_sim_lido++;
             c = code[cont_sim_lido];
-            if (c == '=')
-                estado = 7;
-            else
-                estado = 8;
+
+            if ((c == ' ') || (c == '\n')) {
+                cont_sim_lido++;
+                c = code[cont_sim_lido];
+            }
+
+            if (c == '=') estado = 7;
+            else estado = 8;
             break;
 
         case 7:
@@ -154,7 +158,7 @@ struct Token proximo_token() {
             break;
 
         case 8:
-            cont_sim_lido++;
+            //cont_sim_lido++;
             printf("<relop, GT>\n");
             token.nome_token = RELOP;
             token.atributo = GT;
@@ -228,6 +232,15 @@ int main() {
     code = readFile("programa.txt");
     token = proximo_token();
     token = proximo_token();
+    token = proximo_token();
+    token = proximo_token();
+    token = proximo_token();
+    token = proximo_token();
+    token = proximo_token();
+    token = proximo_token();
+    token = proximo_token();
     //...
+
+    free(code); // Liberar a memória alocada
     return 0;
 }
