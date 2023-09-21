@@ -173,6 +173,9 @@ struct Token proximo_token() {
                 estado = 0;
                 cont_sim_lido++;
             } else {
+				if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+					estado = 10; // Ir para o estado de reconhecimento de identificadores
+				}
                 /*implementar ações referentes aos estado */
                 estado = falhar();
             }
@@ -180,7 +183,14 @@ struct Token proximo_token() {
             break;
 
         /*implementar ações para os estados 10, 11, 12*/
-
+		case 10:
+		// Reconhecimento de identificadores
+		while ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+		    // Continue lendo os caracteres do identificador
+		    // Atualize o token conforme necessário
+		    // Atualize o estado se necessário
+		    // ...
+		}
         case 12:
             c = code[cont_sim_lido];
             if ((c == ' ') || (c == '\n')) {
