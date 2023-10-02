@@ -1,285 +1,156 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
 
-//NOME TOKENS
-#define IF  256;
-#define THEN  257;
-#define ELSE  258;
-#define RELOP  259;
-#define ID  260;
-#define NUM  261;
+#define ID 				256
+#define KEYWORD 		257
+#define INT 			258
+#define STRING_LITERAL 	259
+#define COMENTARIO 		260
+#define ESPACO 			261
 
+//erificar se uma palavra é uma palavra-chave
+int isKeyword(char *word) {
+    char *keywords[] = {
+        "and", "break", "do", "else", "elseif",
+        "end", "false", "for", "function", "if",
+        "in", "local", "nil", "not", "or",
+        "repeat", "return", "then", "true", "until", "while"
+    };
+    int numKeywords = sizeof(keywords) / sizeof(keywords[0]);
 
-//ATRIBUTOS
-#define LT 262;
-#define LE 263;
-#define EQ 264;
-#define NE 265;
-#define GT 266;
-#define GE 267;
-
-
-
-struct Token{
- int nome_token;
- int atributo;
-};
-
-
-
-int estado = 0;
-int partida = 0;
-int cont_sim_lido = 0;
-char *code;
-
-
-char *readFile(char *fileName)
-{
-	FILE *file = fopen(fileName, "r");
-	char *code;
-	int n = 0;
-	int c;
-
-	if(file == NULL) return NULL;
-
-	fseek(file, 0, SEEK_END);
-	long f_size = ftell(file);
-	fseek(file, 0, SEEK_SET);
-
-	code = new char (f_size);
-
-	while ((c = fgetc(file))!= EOF)
-	{
-		code[n++] = (char) c;
-	}
-	code[n] = '\0';
-	return code;
+    for (int i = 0; i < numKeywords; i++) {
+        if (strcmp(word, keywords[i]) == 0) {
+            return 1; //é uma palavra-chave
+        }
+    }
+    return 0; //não é uma palavra-chave
 }
 
 
+void lexer(char *code) {
+    int state = 0; 
+    char lexema[100];
+    int lexemaIndex = 0;
 
+    for (int i = 0; code[i] != '\0'; i++) {
+        char c = code[i];
 
-int falhar()
-{
-	switch(estado)
-	{
-	case 0: partida = 9; break;
+        switch (state) {
+            case 0:
+                if (isspace(c)) {
+                    //espaço em branco, continue no estado 0
+                    state = 0;
+                } else if (c == '"') {
+                    //início de um literal de string, vá para o estado 1
+                    state = 1;
+                    lexema[lexemaIndex++] = c;
+                } else if (c == '-' && code[i + 1] == '-') {
+                    //início de um comentário, vá para o estado 2
+                    state = 2;
+                    lexema[lexemaIndex++] = c;
+                    lexema[lexemaIndex++] = code[++i];
+                } else if (isalpha(c) || c == '_') {
+                    //início de um identificador, vá para o estado 3
+                    state = 3;
+                    lexema[lexemaIndex++] = c;
+                } else if (isdigit(c)) {
+                    //início de um número inteiro, vá para o estado 4
+                    state = 4;
+                    lexema[lexemaIndex++] = c;
+                } else {
+                    //outros caracteres, continue no estado 0
+                    state = 0;
+                }
+                break;
 
-	case 9: partida = 12; break;
+            case 1:
+                //dentro de um literal de string
+                lexema[lexemaIndex++] = c;
+                if (c == '"') {
+                    //fim do literal de string, retorne STRING_LITERAL
+                    lexema[lexemaIndex] = '\0';
+                    printf("<STRING_LITERAL, %s>\n", lexema);
+                    lexemaIndex = 0;
+                    state = 0;
+                }
+                break;
 
-	case 12: partida = 20; break;
+            case 2:
+                //dentro de um comentário
+                lexema[lexemaIndex++] = c;
+                if (c == '\n') {
+                    //fim do comentário de linha única, retorne COMENTÁRIO
+                    lexema[lexemaIndex] = '\0';
+                    printf("<COMENTARIO, %s>\n", lexema);
+                    lexemaIndex = 0;
+                    state = 0;
+                }
+                break;
 
-	case 20: partida = 25; break;
+            case 3:
+                //identificador
+                if (isalnum(c) || c == '_') {
+                    lexema[lexemaIndex++] = c;
+                } else {
+                    lexema[lexemaIndex] = '\0';
+                    if (isKeyword(lexema)) {
+                        //é uma palavra-chave, retorne KEYWORD
+                        printf("<KEYWORD, %s>\n", lexema);
+                    } else {
+                        //é um identificador, retorne ID
+                        printf("<ID, %s>\n", lexema);
+                    }
+                    lexemaIndex = 0;
+                    state = 0;
+                    i--; //volte 1 caractere para reanalisar o caractere atual
+                }
+                break;
 
-	case 25:
-		//retornar msg de erro
-		printf("Erro encontrado no código\n");
-		cont_sim_lido++;
-		break;
-
-	default: printf("Erro do compilador");
-	}
-	return(partida);
+            case 4:
+                //dentro de um número inteiro
+                if (isdigit(c)) {
+                    lexema[lexemaIndex++] = c;
+                } else {
+                    lexema[lexemaIndex] = '\0';
+                    //é um número inteiro, retorne INT
+                    printf("<INT, %s>\n", lexema);
+                    lexemaIndex = 0;
+                    state = 0;
+                    i--; //volte 1 caractere para reanalisar o caractere atual
+                }
+                break;
+        }
+    }
 }
 
-Token proximo_token()
-{
-	Token token;
-	char c;
-	while(code[cont_sim_lido] != EOF)
-	{
-		switch(estado)
-		{
-			case 0:
-				c = code[cont_sim_lido];
-				if((c == ' ')||(c == '\n'))
-				{
-					estado = 0;
-					cont_sim_lido++;
-				}
-				else if(c == '<') estado = 1;
-				else if(c == '=') estado = 5;
-				else if(c == '>') estado = 6;
-				else
-					{
-					 estado = falhar();
-					}
-				break;
+int main() {
+    FILE *file;
+    char fileName[] = "programa.txt";
+    char *code = NULL;
+    long length;
 
-			case 1:
-				cont_sim_lido++;
-				c = code[cont_sim_lido];
+    file = fopen(fileName, "r");
+    if (file) {
+        fseek(file, 0, SEEK_END);
+        length = ftell(file);
+        fseek(file, 0, SEEK_SET);
+        code = (char *)malloc(length + 1);
+        if (code) {
+            fread(code, 1, length, file);
+            code[length] = '\0';
+            fclose(file);
+        }
+    }
 
-				if((c == ' ')||(c == '\n'))
-					{
-						cont_sim_lido++;
-						c = code[cont_sim_lido];
-					}
+    if (code) {
+        lexer(code);
+        free(code);
+    } else {
+        printf("Falha ao abrir o arquivo.\n");
+    }
 
-				if(c == '=') estado = 2;
-				else if(c == '>') estado = 3;
-				else estado = 4;
-				break;
-
-			case 2:
-				cont_sim_lido++;
-				printf("<relop, LE>\n");
-				token.nome_token = RELOP;
-				token.atributo = LE;
-				estado = 0;
-				return(token);
-				break;
-
-			case 3:
-				cont_sim_lido++;
-				printf("<relop, NE>\n");
-				token.nome_token = RELOP;
-				token.atributo = NE;
-				estado = 0;
-				return(token);
-				break;
-
-			case 4:
-				//cont_sim_lido++;
-				printf("<relop, LT>\n");
-				token.nome_token = RELOP;
-				token.atributo = LT;
-				estado = 0;
-				return(token);
-				break;
-
-			case 5:
-				cont_sim_lido++;
-				printf("<relop, EQ>\n");
-				token.nome_token = RELOP;
-				token.atributo = EQ;
-				estado = 0;
-				return(token);
-				break;
-
-			case 6:
-				cont_sim_lido++;
-				c = code[cont_sim_lido];
-
-				if((c == ' ')||(c == '\n'))
-					{
-						cont_sim_lido++;
-						c = code[cont_sim_lido];
-					}
-
-				if(c == '=') estado = 7;
-				else estado = 8;
-				break;
-
-			case 7:
-				cont_sim_lido++;
-				printf("<relop, GE>\n");
-				token.nome_token = RELOP;
-				token.atributo = GE;
-				estado = 0;
-				return(token);
-				break;
-
-			case 8:
-				//cont_sim_lido++;
-				printf("<relop, GT>\n");
-				token.nome_token = RELOP;
-				token.atributo = GT;
-				//ATENÇÃO - CORREÇÃO: foi acrescentado o comando "estado = 0;"
-				estado = 0;
-				return(token);
-				break;
-
-			case 9:
-				c = code[cont_sim_lido];
-				if((c == ' ')||(c == '\n'))
-				{
-					estado = 0;
-					cont_sim_lido++;
-				}
-				else
-				{
-					/*implementar ações referentes aos estado */
-					estado = falhar();
-				}
-
-				break;
-
-				/*implementar ações para os estados 10, 11, 12*/
-
-			case 12:
-				c = code[cont_sim_lido];
-				if((c == ' ')||(c == '\n'))
-				{
-					estado = 0;
-					cont_sim_lido++;
-				}
-				else
-				{
-					/*implementar ações referentes aos estado */
-					estado = falhar();
-				}
-				break;
-
-				/*implementar ações para os estados 13-19*/
-
-			case 20:
-				c = code[cont_sim_lido];
-				if((c == ' ')||(c == '\n'))
-				{
-					estado = 0;
-					cont_sim_lido++;
-				}
-				else
-				{
-					/*implementar ações referentes aos estado */
-					estado = falhar();
-				}
-				break;
-
-				/*implementar ações para os estados 21-24*/
-
-			case 25:
-				c = code[cont_sim_lido];
-				if((c == ' ')||(c == '\n'))
-				{
-					estado = 0;
-					cont_sim_lido++;
-				}
-				else
-				{
-					/*implementar ações referentes aos estado */
-					estado = falhar();
-					token.nome_token = -1;
-					token.atributo = -1;
-					return(token);
-				}
-				break;
-		}
-
-	}
-	token.nome_token = EOF;
-	token.atributo = -1;
-	return(token);
-}
-
-
-
-
-int main ()
-{
-	Token token;
-    code = readFile("programa.txt");
-    token = proximo_token();
-    token = proximo_token();
-    token = proximo_token();
-    token = proximo_token();
-    token = proximo_token();
-    token = proximo_token();
-    token = proximo_token();
-    token = proximo_token();
-    token = proximo_token();
-    //...
-
-
+    return 0;
 }
