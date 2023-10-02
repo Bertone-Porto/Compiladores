@@ -1,0 +1,38 @@
+-- comentário em Lua
+print("Olá, mundo!")  -- imprime uma mensagem
+
+local x = 42  -- declara uma variável local x e atribui o valor 42 a ela
+
+if x > 10 then
+    print("x é maior que 10")
+else
+    print("x é menor ou igual a 10")
+end
+
+for i = 1, 5 do
+    print("Iteração " .. i)
+end
+
+function soma(a, b)
+    return a + b
+end
+
+local resultado = soma(10, 20)
+print("A soma de 10 e 20 é " .. resultado)
+
+-- exemplo de string com aspas duplas
+local texto = "Isso é uma string com aspas duplas"
+print(texto)
+
+--[[ comentário de várias linhas
+   Linha 1
+   Linha 2
+   Linha 3
+]]
+
+-- identificador com underscore
+local _var = 100
+
+-- exemplo de palavra-chave
+local palavra_chave = "and"
+
